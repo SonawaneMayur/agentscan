@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem@2025.8.21", "/Users/me/projects"]
+    },
+    "postgres": {
+      "command": "uvx",
+      "args": ["mcp-server-postgres==0.1.0"],
+      "env": { "DATABASE_PASSWORD": "${DATABASE_PASSWORD}" }
+    },
+    "internal-tools": {
+      "url": "https://tools.internal.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${INTERNAL_TOOLS_TOKEN}" }
+    },
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git==0.6.2"],
+      "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" }
+    }
+  }
+}

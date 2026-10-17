@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentscan"
+version = "0.1.0"
+description = "Security scanner for AI agents and MCP server configurations"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Mayur Sonawane", email = "mayurs1690@gmail.com" }]
+keywords = ["security", "mcp", "ai-agents", "llm", "scanner", "sast"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+]
+dependencies = ["rich>=13.7"]
+
+[project.scripts]
+agentscan = "agentscan.cli:main"
+
+[dependency-groups]
+demo = [
+    "ipykernel>=7.3.0",
+    "matplotlib>=3.10.9",
+    "nbconvert>=7.17.2",
+    "nbformat>=5.11.1",
+    "pandas>=2.3.3",
+]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentscan"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

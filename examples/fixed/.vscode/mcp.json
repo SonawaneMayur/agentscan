@@ -1,0 +1,18 @@
+{
+  // Shared MCP servers for VS Code
+  "inputs": [
+    { "type": "promptString", "id": "docs-api-key", "description": "Docs search API key", "password": true }
+  ],
+  "servers": {
+    "docs-search": {
+      "type": "http",
+      "url": "https://docs.example.com/mcp",
+      "headers": { "X-API-Key": "${input:docs-api-key}" }
+    },
+    "browser": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@0.0.41"]
+    }
+  }
+}

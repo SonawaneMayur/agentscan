@@ -1,0 +1,14 @@
+{
+  // Shared MCP servers for VS Code
+  "servers": {
+    "docs-search": {
+      "type": "http",
+      "url": "http://docs.example.com/mcp?api_key=demo-key-5f2c9a71"
+    },
+    "browser": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    },
+  }
+}
