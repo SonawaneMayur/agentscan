@@ -3,8 +3,8 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentscan"
-version = "0.1.0"
+name = "agentscan-si"
+dynamic = ["version"]
 description = "Security scanner for AI agents and MCP server configurations"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,9 +17,19 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security",
 ]
 dependencies = ["rich>=13.7"]
+
+[project.urls]
+Homepage = "https://github.com/SonawaneMayur/agentscan"
+Repository = "https://github.com/SonawaneMayur/agentscan"
+Issues = "https://github.com/SonawaneMayur/agentscan/issues"
+Changelog = "https://github.com/SonawaneMayur/agentscan/blob/main/CHANGELOG.md"
 
 [project.scripts]
 agentscan = "agentscan.cli:main"
@@ -27,12 +37,19 @@ agentscan = "agentscan.cli:main"
 [dependency-groups]
 demo = [
     "ipykernel>=7.3.0",
+    "jupyterlab>=4.6.4",
     "matplotlib>=3.10.9",
     "nbconvert>=7.17.2",
     "nbformat>=5.11.1",
     "pandas>=2.3.3",
 ]
 dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.hatch.version]
+path = "src/agentscan/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.github", "/notebooks", "/docs", "/scripts", "/uv.lock", "/.python-version"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentscan"]

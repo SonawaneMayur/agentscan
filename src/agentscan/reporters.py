@@ -6,6 +6,8 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.markup import escape
+from rich.padding import Padding
+from rich.table import Table
 from rich.text import Text
 
 from agentscan import __version__
@@ -43,10 +45,14 @@ def render_text(result: ScanResult, console: Console) -> None:
             Text(f" {str(f.severity).upper()} ", style=_STYLES[f.severity]),
             Text(f"{f.rule_id}  {f.title}", style="bold"),
         )
-        console.print(f"  server   {escape(f.server)} [dim]({escape(display_path(f.source))})[/]")
-        console.print(f"  issue    {escape(f.message)}")
-        console.print(f"  [dim]fix      {escape(f.remediation)}[/]")
-        console.print()
+        # A grid keeps wrapped text aligned under its value column instead of the left edge.
+        details = Table.grid(padding=(0, 3))
+        details.add_column(no_wrap=True)
+        details.add_column()
+        details.add_row("server", f"{escape(f.server)} [dim]({escape(display_path(f.source))})[/]")
+        details.add_row("issue", escape(f.message))
+        details.add_row("[dim]fix[/]", f"[dim]{escape(f.remediation)}[/]")
+        console.print(Padding(details, (0, 0, 1, 2)))
 
     scanned = (
         f"Scanned {len(result.servers)} MCP server(s) in {len(result.config_files)} config file(s)"
