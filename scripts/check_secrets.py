@@ -5,6 +5,8 @@ Prints the file and the kind of problem, never the matched value.
 Usage:
   uv run python scripts/check_secrets.py            all tracked and untracked, non-ignored files
   uv run python scripts/check_secrets.py --staged   staged changes only (used by the git hook)
+  uv run python scripts/check_secrets.py --rev REV  every file in a commit, e.g. origin/main
+  uv run python scripts/check_secrets.py --history  every file version in every commit and tag
 """
 
 from __future__ import annotations
@@ -58,23 +60,55 @@ def problems(path: str, text: str) -> list[str]:
     return found
 
 
-def main() -> int:
-    staged = "--staged" in sys.argv
-    if staged:
-        paths = git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z").split("\0")
-    else:
-        paths = git("ls-files", "--cached", "--others", "--exclude-standard", "-z").split("\0")
-    paths = [p for p in paths if p]
+def split_z(output: str) -> list[str]:
+    return [part for part in output.split("\0") if part]
 
-    found = [f"{p}: this path must never be committed" for p in paths if BLOCKED_PATH.search(p)]
-    for path in paths:
+
+def history_items() -> list[tuple[str, str, str]]:
+    """Every file version added or changed in any commit on any branch or tag."""
+    items, seen = [], set()
+    for commit in git("rev-list", "--all").split():
+        parts = split_z(git("diff-tree", "--no-commit-id", "-r", "--root", "-z", commit))
+        for meta, path in zip(parts[::2], parts[1::2], strict=True):
+            _, _, _, blob, status = meta.split()
+            if status != "D" and (blob, path) not in seen:
+                seen.add((blob, path))
+                items.append((f"commit {commit[:7]} {path}", path, blob))
+    return items
+
+
+def collect() -> tuple[str, list[tuple[str, str, str | None]]]:
+    """Return a description and (label, path, git object or None for the working tree) items."""
+    args = sys.argv[1:]
+    if "--staged" in args:
+        paths = split_z(git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"))
+        return "staged files", [(p, p, f":{p}") for p in paths]
+    if "--rev" in args:
+        rev = args[args.index("--rev") + 1]
+        paths = split_z(git("ls-tree", "-r", "--name-only", "-z", rev))
+        return f"files in {rev}", [(f"{rev}:{p}", p, f"{rev}:{p}") for p in paths]
+    if "--history" in args:
+        commits = len(git("rev-list", "--all").split())
+        return f"file versions across {commits} commits", history_items()
+    paths = split_z(git("ls-files", "--cached", "--others", "--exclude-standard", "-z"))
+    return "files", [(p, p, None) for p in paths]
+
+
+def main() -> int:
+    scope, items = collect()
+    found = [
+        f"{label}: this path must never be committed"
+        for label, path, _ in items
+        if BLOCKED_PATH.search(path)
+    ]
+    for label, path, obj in items:
         try:
-            text = git("show", f":{path}") if staged else open(path, encoding="utf-8").read()
+            text = git("cat-file", "-p", obj) if obj else open(path, encoding="utf-8").read()
         except (UnicodeDecodeError, FileNotFoundError, IsADirectoryError):
             continue
         except subprocess.CalledProcessError:
             continue
-        found += problems(path, text)
+        found += problems(label, text)
 
     if found:
         print("Secret check failed:\n  " + "\n  ".join(found), file=sys.stderr)
@@ -84,7 +118,7 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    print(f"Secret check passed ({len(paths)} files).")
+    print(f"Secret check passed ({len(items)} {scope}).")
     return 0
 
 
