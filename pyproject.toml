@@ -49,7 +49,9 @@ dev = ["pytest>=8", "ruff>=0.6"]
 path = "src/agentscan/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-exclude = ["/.github", "/notebooks", "/docs", "/scripts", "/uv.lock", "/.python-version"]
+# Allowlist: anything not named here (research data, notebooks, hooks, local files) stays out of
+# the package uploaded to PyPI, even if it is on disk when building.
+only-include = ["src", "tests", "examples", "README.md", "CHANGELOG.md", "SECURITY.md", "LICENSE"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentscan"]

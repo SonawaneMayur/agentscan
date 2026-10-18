@@ -42,29 +42,21 @@ def strip_jsonc(text: str) -> str:
         elif text.startswith("/*", i):
             end = text.find("*/", i + 2)
             i = n if end == -1 else end + 2
-        elif c == "," and _next_significant(text, i + 1) in ("}", "]"):
+        elif c in "}]":
+            # Drop a trailing comma before the closing bracket. Comments are never copied to
+            # `out`, so only whitespace can sit in between; this keeps the pass linear even on
+            # hostile input such as thousands of commas followed by a huge comment.
+            j = len(out) - 1
+            while j >= 0 and out[j].isspace():
+                j -= 1
+            if j >= 0 and out[j] == ",":
+                del out[j]
+            out.append(c)
             i += 1
         else:
             out.append(c)
             i += 1
     return "".join(out)
-
-
-def _next_significant(text: str, start: int) -> str:
-    """Return the next character that is not whitespace or part of a comment."""
-    i, n = start, len(text)
-    while i < n:
-        if text[i].isspace():
-            i += 1
-        elif text.startswith("//", i):
-            end = text.find("\n", i)
-            i = n if end == -1 else end
-        elif text.startswith("/*", i):
-            end = text.find("*/", i + 2)
-            i = n if end == -1 else end + 2
-        else:
-            return text[i]
-    return ""
 
 
 def detect_client(path: Path) -> str:
@@ -88,10 +80,17 @@ def load_servers(path: Path) -> list[MCPServer]:
         text = path.read_text(encoding="utf-8")
     except OSError as e:
         raise ConfigError(f"cannot read file: {e.strerror}") from e
+    return parse_servers(text, path)
+
+
+def parse_servers(text: str, path: Path) -> list[MCPServer]:
+    """Parse config text; `path` identifies the client and is recorded as each server's source."""
     try:
         data = json.loads(strip_jsonc(text))
     except json.JSONDecodeError as e:
         raise ConfigError(f"invalid JSON at line {e.lineno}: {e.msg}") from e
+    except RecursionError:
+        raise ConfigError("JSON is nested too deeply to be a config file") from None
     if not isinstance(data, dict):
         raise ConfigError("top-level value is not an object")
 

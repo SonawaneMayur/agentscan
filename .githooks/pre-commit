@@ -1,0 +1,7 @@
+#!/bin/sh
+# Blocks commits containing credentials or private research data.
+# Enable once per clone:  git config core.hooksPath .githooks
+if [ -x .venv/bin/python ]; then
+  exec .venv/bin/python scripts/check_secrets.py --staged
+fi
+exec uv run --quiet python scripts/check_secrets.py --staged

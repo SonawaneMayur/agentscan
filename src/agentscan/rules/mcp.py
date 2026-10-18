@@ -91,7 +91,7 @@ def hardcoded_secret(server: MCPServer) -> Iterator[str]:
             yield f"argument {flag.group(1)}={_mask(flag.group(2))} contains a hardcoded credential"
 
     if server.url:
-        for name, value in parse_qsl(urlsplit(server.url).query):
+        for name, value in parse_qsl(url_query(server.url)):
             if kind := _secret_kind(name, value):
                 yield f"URL query parameter {name!r} contains a hardcoded {kind} ({_mask(value)})"
 
@@ -196,6 +196,31 @@ def unpinned_package(server: MCPServer) -> Iterator[str]:
 # --- MCP003: insecure remote transport -----------------------------------------------------
 
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+_URL_PARTS = re.compile(r"^\s*([A-Za-z][A-Za-z0-9+.-]*)://(?:[^@/?#]*@)?(\[[^\]/?#]*\]?|[^:/?#]*)")
+
+
+def url_scheme_and_host(url: str) -> tuple[str, str]:
+    """Lower-cased (scheme, host); never raises.
+
+    Configs often hold placeholders like http://[SERVER_IP]:8080, which urllib rejects because
+    a bracketed host must be an IPv6 address. Fall back to a plain pattern match for those.
+    """
+    try:
+        parts = urlsplit(url.strip())
+        return parts.scheme.lower(), (parts.hostname or "").lower()
+    except ValueError:
+        match = _URL_PARTS.match(url)
+        if not match:
+            return "", ""
+        return match.group(1).lower(), match.group(2).strip("[]").lower()
+
+
+def url_query(url: str) -> str:
+    return url.partition("?")[2].partition("#")[0]
+
+
+def is_local_host(host: str) -> bool:
+    return host in _LOCAL_HOSTS or host.startswith("127.") or host.endswith(".localhost")
 
 
 @rule(
@@ -211,12 +236,8 @@ _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
 def insecure_transport(server: MCPServer) -> Iterator[str]:
     if not server.url:
         return
-    parts = urlsplit(server.url)
-    scheme = parts.scheme.lower()
-    if scheme not in ("http", "ws"):
-        return
-    host = (parts.hostname or "").lower()
-    if host in _LOCAL_HOSTS or host.startswith("127.") or host.endswith(".localhost"):
+    scheme, host = url_scheme_and_host(server.url)
+    if scheme not in ("http", "ws") or is_local_host(host):
         return
     message = f"server at {host} is reached over unencrypted {scheme}://"
     if any(SENSITIVE_NAME.search(name) for name in server.headers):

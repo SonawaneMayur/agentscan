@@ -178,17 +178,29 @@ The notebook only scans the files in `examples/`, never your own configs.
 - [ ] Agent code analysis (LangChain, CrewAI, OpenAI/Anthropic SDKs)
 - [ ] Findings mapped to OWASP LLM Top 10 and OWASP Agentic AI threats
 
+## Research
+
+[research/mcp-config-census/](research/mcp-config-census/) runs agentscan over MCP configs
+committed to public GitHub repositories, to measure how common these risks are in practice. The
+method, ethics rules and safety measures are in its README; results are published once the
+full run has been reviewed.
+
 ## Development
 
 ```bash
-uv sync               # create .venv with dev dependencies
-uv run pytest         # tests
-uv run ruff check     # lint
-uv run ruff format    # format
-
-# refresh the README screenshot (docs/demo.svg) after changing output
-uv run python scripts/render_demo.py
+uv sync
+git config core.hooksPath .githooks
 ```
+
+`uv sync` creates `.venv` with the dev dependencies. The second command enables a pre-commit
+hook that blocks commits containing credentials, `.env` files, databases or research data.
+
+| Task | Command |
+|---|---|
+| Tests | `uv run pytest` and `uv run pytest research/mcp-config-census` |
+| Lint and format | `uv run ruff check` and `uv run ruff format` |
+| Secret check (whole repo) | `uv run python scripts/check_secrets.py` |
+| Refresh the README screenshot | `uv run python scripts/render_demo.py` |
 
 Releasing: bump `__version__` in `src/agentscan/__init__.py`, add a `CHANGELOG.md` entry, then
 push a matching tag (`git tag v0.1.1 && git push origin v0.1.1`). The release workflow tests,

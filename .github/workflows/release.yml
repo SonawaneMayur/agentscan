@@ -24,6 +24,12 @@ jobs:
           fi
       - run: uv run pytest
       - run: uv build
+      - name: Refuse to publish research data, notebooks or local files
+        run: |
+          if tar tzf dist/*.tar.gz | grep -E '/(research|notebooks|data|scripts|\.githooks)/|\.(db|env|csv)$'; then
+            echo "Unexpected files in the source distribution" >&2
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: dist

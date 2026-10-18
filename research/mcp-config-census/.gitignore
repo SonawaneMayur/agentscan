@@ -1,0 +1,6 @@
+# Working data: repo names, masked findings, salt and the disclosure list. Never commit.
+data/
+
+# Aggregated results stay out of git until the full census has run and the tables have been
+# reviewed for anything identifying. Remove this line to publish them.
+results/

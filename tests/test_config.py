@@ -1,9 +1,16 @@
 import json
+import time
 from pathlib import Path
 
 import pytest
 
-from agentscan.config import ConfigError, detect_client, load_servers, strip_jsonc
+from agentscan.config import (
+    ConfigError,
+    detect_client,
+    load_servers,
+    parse_servers,
+    strip_jsonc,
+)
 from agentscan.discovery import discover
 
 
@@ -19,6 +26,25 @@ def test_strip_jsonc_removes_comments_and_trailing_commas():
         "list": [1, 2],
         "s": "has , } inside",
     }
+
+
+def test_strip_jsonc_drops_comma_before_comment_and_bracket():
+    assert json.loads(strip_jsonc('{"a": [1, 2, /* c */\n // d\n ], }')) == {"a": [1, 2]}
+
+
+def test_strip_jsonc_stays_fast_on_hostile_input():
+    # Quadratic handling of commas-then-comment would take minutes on this.
+    hostile = "[" + "," * 200_000 + "/*" + "x" * 200_000 + "*/ ]"
+    started = time.monotonic()
+    strip_jsonc(hostile)
+    assert time.monotonic() - started < 2
+
+
+def test_deeply_nested_json_is_a_config_error_not_a_crash(tmp_path: Path):
+    path = tmp_path / ".mcp.json"
+    path.write_text("[" * 100_000 + "]" * 100_000)
+    with pytest.raises(ConfigError):
+        load_servers(path)
 
 
 def test_load_claude_desktop_config(write_config):
@@ -61,6 +87,12 @@ def test_load_claude_code_per_project_servers(write_config):
     )
     names = {s.name for s in load_servers(path)}
     assert names == {"global", "/work/app:local"}
+
+
+def test_parse_servers_from_text_uses_path_for_client():
+    [server] = parse_servers('{"mcpServers": {"a": {"command": "x"}}}', Path("/r/.cursor/mcp.json"))
+    assert server.client == "cursor"
+    assert server.source == Path("/r/.cursor/mcp.json")
 
 
 def test_invalid_json_raises_config_error(tmp_path: Path):

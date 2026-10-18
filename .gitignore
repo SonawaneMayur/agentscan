@@ -1,11 +1,46 @@
+# --- Python / build ---
 __pycache__/
 *.py[cod]
 .venv/
+venv/
 build/
 dist/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .coverage
 htmlcov/
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+
+# --- Secrets and credentials: never commit ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+.netrc
+.pypirc
+*token*.txt
+
+# --- Local data: databases, dumps, logs ---
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.log
+
+# --- Editor and OS files (repo root only: examples/ contains intentional .vscode and
+#     .cursor MCP configs that must stay tracked) ---
+/.vscode/
+/.cursor/
+/.idea/
+/.claude/settings.local.json
+/.mcp.json
 .DS_Store

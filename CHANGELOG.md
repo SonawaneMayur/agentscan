@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-18
+
+### Fixed
+
+- Scanning no longer crashes on server URLs with a bracketed placeholder host, such as
+  `http://[SERVER_IP]:8080/mcp`. MCP003 now reports these when they use plain `http://`, and
+  MCP001 still checks their query parameters. Found by running agentscan over public configs.
+- A deeply nested JSON file is now reported as an invalid config instead of crashing the scan,
+  so a planted file can't break a CI job.
+- Comment and trailing-comma handling is now linear-time, so a crafted config can't stall the
+  scanner.
+
 ## [0.1.0] - 2026-10-17
 
 First release, published on PyPI as `agentscan-si`.
@@ -23,5 +35,6 @@ First release, published on PyPI as `agentscan-si`.
 - `agentscan rules` lists the available rules.
 - Demo notebook and before/after example configs.
 
-[Unreleased]: https://github.com/SonawaneMayur/agentscan/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/SonawaneMayur/agentscan/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/SonawaneMayur/agentscan/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/SonawaneMayur/agentscan/releases/tag/v0.1.0

@@ -17,6 +17,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync
+      - run: uv run python scripts/check_secrets.py
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run pytest
+      - run: uv run pytest research/mcp-config-census

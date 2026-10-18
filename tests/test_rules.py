@@ -131,3 +131,30 @@ def test_plain_http_with_auth_header_mentions_credentials():
 )
 def test_https_and_localhost_are_ok(url):
     assert messages("MCP003", server(url=url)) == []
+
+
+# --- malformed input -----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://[SERVER_IP]:8080/mcp",
+        "http://[::1:8080/mcp",
+        "http://user@[not-an-ip]/mcp?api_key=abcd1234efgh5678",
+        "not a url",
+        "",
+    ],
+)
+def test_malformed_urls_never_crash_any_rule(url):
+    for rule in RULES.values():
+        rule.run(server(url=url))
+
+
+def test_placeholder_host_over_http_is_still_reported():
+    [msg] = messages("MCP003", server(url="http://[SERVER_IP]:8080/mcp"))
+    assert "server_ip" in msg
+
+
+def test_secret_in_query_of_malformed_url_is_reported():
+    assert messages("MCP001", server(url="http://[HOST]/mcp?api_key=abcd1234efgh5678"))
