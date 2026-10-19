@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
 
@@ -24,6 +25,68 @@ _BROAD_PATH = re.compile(
 )
 
 _SECRET_KIND = re.compile(r"hardcoded (.+?)(?: \(|$)")
+
+# Words and shapes that mark a value as a placeholder or test value rather than a real secret.
+_PLACEHOLDER = re.compile(
+    r"x{3,}|\*{3,}|\.{3}|[<>{}]|your|example|placeholder|dummy|fake|test|sample|change_?me"
+    r"|replace|insert|here|todo|redacted|demo|mock|null|none|undefined|1234|abcd|0000",
+    re.I,
+)
+_KNOWN_PREFIX = re.compile(
+    r"^(?:sk-(?:ant-(?:api\d+-)?|proj-|svcacct-)?|gh[pousr]_|github_pat_|xox[abprs]-|AKIA|ASIA"
+    r"|AIza|[rs]k_live_)"
+)
+
+
+EXPECTED_FILENAME = {
+    "claude-code": ".mcp.json",
+    "cursor": "mcp.json",
+    "vscode": "mcp.json",
+    "claude-desktop": "claude_desktop_config.json",
+    "windsurf": "mcp_config.json",
+}
+_EXAMPLE_DIR = re.compile(
+    r"^(?:tests?|__tests__|testdata|test[-_]data|fixtures?|__fixtures__|examples?|samples?"
+    r"|demos?|benchmarks?|templates?|mocks?|__mocks__|docs?|e2e|specs?)$"
+    r"|^(?:test|example|sample|fixture|demo|template|mock)[-_]",
+    re.I,
+)
+
+
+def path_kind(client: str, path: str) -> str:
+    """config | plugin | test_or_example | other_name (e.g. .mcp.json.example, mcp.json.bak)."""
+    parts = path.split("/")
+    if parts[-1] != EXPECTED_FILENAME.get(client):
+        return "other_name"
+    dirs = [d.lower() for d in parts[:-1]]
+    if any(_EXAMPLE_DIR.match(d) for d in dirs):
+        return "test_or_example"
+    if any(d in ("plugins", "plugin", ".claude-plugin") for d in dirs):
+        return "plugin"
+    return "config"
+
+
+def shannon_entropy(text: str) -> float:
+    if not text:
+        return 0.0
+    counts = {c: text.count(c) for c in set(text)}
+    return -sum(n / len(text) * math.log2(n / len(text)) for n in counts.values())
+
+
+def secret_quality(value: str) -> str:
+    """Classify a found secret without keeping it: likely_real, placeholder, low_entropy or
+    too_short. Used to separate real leaks from documentation and test values."""
+    value = value.strip()
+    if value.lower().startswith("bearer "):
+        value = value[7:].strip()
+    if _PLACEHOLDER.search(value):
+        return "placeholder"
+    core = _KNOWN_PREFIX.sub("", value)
+    if len(core) < 12:
+        return "too_short"
+    if len(set(core)) < 8 or shannon_entropy(core) < 3.0:
+        return "low_entropy"
+    return "likely_real"
 
 
 def launcher_name(command: str | None) -> str | None:

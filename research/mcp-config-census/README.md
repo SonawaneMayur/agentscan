@@ -82,4 +82,4 @@ The pipeline handles files written by strangers, so it is built to treat them as
 All steps are resumable: re-running skips work already done. The working database lives in
 `data/census.db` (gitignored).
 
-Tests: `uv run pytest research/mcp-config-census`
+Tests: `uv run --group demo pytest research/mcp-config-census`

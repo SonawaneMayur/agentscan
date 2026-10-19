@@ -16,6 +16,7 @@ import argparse
 import base64
 import hashlib
 import os
+import re
 import threading
 import time
 import urllib.error
@@ -35,6 +36,14 @@ WORKERS = 4
 WORKER_INTERVAL = 0.5  # seconds between requests per worker: ~8 requests/second overall
 BATCH = 200
 RULES = all_rules()
+
+
+_MASK_PREFIX = re.compile(r"[^\s(=]{1,4}…\((\d+) chars\)")
+
+
+def strip_secret_prefix(message: str) -> str:
+    """agentscan shows the first 4 characters of a secret; the census keeps none of them."""
+    return _MASK_PREFIX.sub(r"…(\1 chars)", message)
 
 
 def scan_text(db, sha: str, text: str, path: str) -> None:
@@ -64,7 +73,7 @@ def scan_text(db, sha: str, text: str, path: str) -> None:
                         server.name,
                         finding.rule_id,
                         str(finding.severity),
-                        finding.message,
+                        strip_secret_prefix(finding.message),
                         secret_kind(finding.message) if finding.rule_id == "MCP001" else None,
                     ),
                 )

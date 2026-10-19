@@ -1,6 +1,11 @@
 # Working data: repo names, masked findings, salt and the disclosure list. Never commit.
 data/
 
-# Aggregated results stay out of git until the full census has run and the tables have been
-# reviewed for anything identifying. Remove this line to publish them.
+# --- Launch embargo ---------------------------------------------------------------------
+# The census findings stay unpublished until the write-up goes live. To publish them,
+# delete this block (keep data/ above) and commit results/, figures/, analyze.ipynb and
+# report.md together.
 results/
+figures/
+analyze.ipynb
+report.md

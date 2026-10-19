@@ -81,6 +81,18 @@ CREATE TABLE IF NOT EXISTS findings (
     secret_kind TEXT
 );
 CREATE INDEX IF NOT EXISTS findings_blob ON findings (blob_sha);
+-- One row per MCP001 secret: where it was and how real it looks. The value itself is never
+-- stored; there is deliberately no column that could hold it.
+CREATE TABLE IF NOT EXISTS secret_quality (
+    blob_sha TEXT NOT NULL,
+    server_name TEXT NOT NULL,
+    location TEXT NOT NULL,           -- env var | header | argument | URL query parameter
+    var_name TEXT NOT NULL,
+    secret_kind TEXT NOT NULL,
+    quality TEXT NOT NULL             -- likely_real | placeholder | low_entropy | too_short
+);
+CREATE INDEX IF NOT EXISTS secret_quality_blob ON secret_quality (blob_sha);
+CREATE TABLE IF NOT EXISTS secret_quality_done (blob_sha TEXT PRIMARY KEY, status TEXT NOT NULL);
 """
 
 

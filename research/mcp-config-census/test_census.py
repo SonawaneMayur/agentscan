@@ -1,14 +1,30 @@
 import json
+import random
 import sqlite3
+import string
 import urllib.request
 from pathlib import Path
 
 import pytest
 from common import SCHEMA, _GitHubOnlyRedirects, check_url
-from features import docker_image, docker_image_pinned, package_name, secret_kind, server_features
+from features import (
+    docker_image,
+    docker_image_pinned,
+    package_name,
+    path_kind,
+    secret_kind,
+    secret_quality,
+    server_features,
+)
 from fetch_scan import raw_url, scan_text
 
 from agentscan.models import MCPServer
+
+
+def fake_key(length: int, seed: int) -> str:
+    """Random-looking key built at test time, so no secret-shaped literal sits in the repo."""
+    rng = random.Random(seed)
+    return "".join(rng.choice(string.ascii_letters + string.digits) for _ in range(length))
 
 
 def server(**kwargs) -> MCPServer:
@@ -150,8 +166,84 @@ def test_rescanning_does_not_duplicate_findings():
     assert db.execute("SELECT COUNT(*) FROM findings").fetchone()[0] == 1
 
 
+@pytest.mark.parametrize(
+    ("value", "quality"),
+    [
+        ("your-api-key-here", "placeholder"),
+        ("sk-" + "x" * 28, "placeholder"),
+        ("<YOUR_TOKEN>", "placeholder"),
+        ("sk_test_" + "a1B2c3D4e5F6g7H8i9J0", "placeholder"),
+        ("Bearer ${input:token}", "placeholder"),
+        ("hunter2", "too_short"),
+        ("aaaaaaaaaaaaaaaaaaaaaaaa", "low_entropy"),
+        ("ghp_" + "Z" * 36, "low_entropy"),
+        ("ghp_" + fake_key(36, seed=1), "likely_real"),
+        ("Bearer " + fake_key(30, seed=2), "likely_real"),
+    ],
+)
+def test_secret_quality(value, quality):
+    assert secret_quality(value) == quality
+
+
+@pytest.mark.parametrize(
+    ("client", "path", "kind"),
+    [
+        ("claude-code", ".mcp.json", "config"),
+        ("claude-code", "services/api/.mcp.json", "config"),
+        ("cursor", ".cursor/mcp.json", "config"),
+        (
+            "claude-desktop",
+            "Library/Application Support/Claude/claude_desktop_config.json",
+            "config",
+        ),
+        ("claude-code", ".mcp.json.example", "other_name"),
+        ("vscode", ".vscode/mcp.json.bak", "other_name"),
+        ("claude-code", "tests/fixtures/.mcp.json", "test_or_example"),
+        ("claude-code", "examples/basic/.mcp.json", "test_or_example"),
+        ("cursor", "templates/next-app/.cursor/mcp.json", "test_or_example"),
+        ("claude-code", "benchmarks/skills/mcp/benign/case_1/.mcp.json", "test_or_example"),
+        ("claude-code", "plugins/science-data/.mcp.json", "plugin"),
+        ("claude-code", "src/testing_utils/.mcp.json", "config"),
+    ],
+)
+def test_path_kind(client, path, kind):
+    assert path_kind(client, path) == kind
+
+
 def test_scan_text_records_parse_errors():
     db = sqlite3.connect(":memory:")
     db.executescript(SCHEMA)
     scan_text(db, "sha2", "{broken", ".mcp.json")
     assert db.execute("SELECT status FROM blobs").fetchone()[0] == "parse_error"
+
+
+def test_export_guard_deletes_files_that_could_leak(tmp_path):
+    from export_results import assert_publishable
+
+    (tmp_path / "ok.csv").write_text("rule_id,pct\nMCP001,4.8\n")
+    assert_publishable(tmp_path)
+
+    leaky = tmp_path / "leaky.csv"
+    leaky.write_text(
+        "message\nheader 'Authorization' contains a hardcoded credential (Bear…(21 chars))\n"
+    )
+    with pytest.raises(SystemExit, match="masked secret value"):
+        assert_publishable(tmp_path)
+    assert not leaky.exists()
+
+    url = tmp_path / "url.csv"
+    url.write_text("link\nhttps://github.com/someone/repo/blob/main/.mcp.json\n")
+    with pytest.raises(SystemExit, match="GitHub URL"):
+        assert_publishable(tmp_path)
+    assert not url.exists()
+
+
+def test_stored_findings_keep_no_secret_characters():
+    db = sqlite3.connect(":memory:")
+    db.executescript(SCHEMA)
+    secret = fake_key(30, seed=3)
+    config = {"mcpServers": {"s": {"command": "x", "env": {"API_TOKEN": secret}}}}
+    scan_text(db, "sha4", json.dumps(config), ".mcp.json")
+    [message] = [r[0] for r in db.execute("SELECT message FROM findings")]
+    assert "…(30 chars)" in message
+    assert secret[:4] not in message
