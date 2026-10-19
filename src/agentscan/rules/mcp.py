@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
@@ -29,6 +30,12 @@ SENSITIVE_FLAG = re.compile(
     r"^(--?[\w-]*(?:token|secret|password|api[-_]?key|access[-_]?key)[\w-]*)=(.+)$", re.I
 )
 PLACEHOLDER = re.compile(r"^(?:<.*>|your[-_ ].*|x{3,}|\*+|changeme|\.\.\.)$", re.I)
+# A file path (e.g. GOOGLE_APPLICATION_CREDENTIALS=/keys/sa.json) points at a secret but isn't one.
+_PATH = re.compile(r"^(?:/|~/|\.{1,2}/|[A-Za-z]:[\\/]|\$\{?HOME\}?/|%\w+%\\)[^\s]*$")
+
+
+def looks_like_path(value: str) -> bool:
+    return bool(_PATH.match(value.strip()))
 
 
 def _known_secret(value: str) -> str | None:
@@ -39,11 +46,13 @@ def _known_secret(value: str) -> str | None:
 
 
 def _is_literal(value: str) -> bool:
-    """False for env var references and placeholders, which are the safe way to pass secrets."""
+    """False for env var references, placeholders and file paths, which aren't secret values."""
     value = value.strip()
     if value.lower().startswith("bearer "):
         value = value[7:].strip()
     if "${" in value or re.fullmatch(r"\$[A-Za-z_]\w*", value) or PLACEHOLDER.match(value):
+        return False
+    if looks_like_path(value):
         return False
     return len(value) >= 8
 
@@ -77,23 +86,42 @@ def _mask(value: str) -> str:
     ),
 )
 def hardcoded_secret(server: MCPServer) -> Iterator[str]:
+    for hit in find_secrets(server):
+        if hit.location == "argument":
+            shown = f"{hit.name}={_mask(hit.value)}" if hit.name else _mask(hit.value)
+            yield f"argument {shown} contains a hardcoded {hit.kind}"
+        else:
+            masked = _mask(hit.value)
+            yield f"{hit.location} {hit.name!r} contains a hardcoded {hit.kind} ({masked})"
+
+
+@dataclass(frozen=True)
+class SecretHit:
+    location: str  # "env var" | "header" | "argument" | "URL query parameter"
+    name: str  # variable, header, flag or parameter name; "" for a bare argument
+    kind: str
+    value: str  # the raw secret: callers must never print, log or store it
+
+
+def find_secrets(server: MCPServer) -> Iterator[SecretHit]:
+    """Every hardcoded secret MCP001 reports, with its raw value for in-memory analysis."""
     for where, items in (("env var", server.env), ("header", server.headers)):
         for name, value in items.items():
             if kind := _secret_kind(name, value):
-                yield f"{where} {name!r} contains a hardcoded {kind} ({_mask(value)})"
+                yield SecretHit(where, name, kind, value)
 
     for arg in server.args:
         flag = SENSITIVE_FLAG.match(arg)
         if kind := _known_secret(arg):
-            shown = f"{flag.group(1)}={_mask(flag.group(2))}" if flag else _mask(arg)
-            yield f"argument {shown} contains a hardcoded {kind}"
+            name, value = (flag.group(1), flag.group(2)) if flag else ("", arg)
+            yield SecretHit("argument", name, kind, value)
         elif flag and _is_literal(flag.group(2)):
-            yield f"argument {flag.group(1)}={_mask(flag.group(2))} contains a hardcoded credential"
+            yield SecretHit("argument", flag.group(1), "credential", flag.group(2))
 
     if server.url:
         for name, value in parse_qsl(url_query(server.url)):
             if kind := _secret_kind(name, value):
-                yield f"URL query parameter {name!r} contains a hardcoded {kind} ({_mask(value)})"
+                yield SecretHit("URL query parameter", name, kind, value)
 
 
 # --- MCP002: unpinned packages -------------------------------------------------------------

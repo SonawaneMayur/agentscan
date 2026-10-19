@@ -42,6 +42,26 @@ def test_env_references_and_placeholders_are_not_secrets(value):
     assert messages("MCP001", server(env={"GITHUB_TOKEN": value})) == []
 
 
+@pytest.mark.parametrize(
+    "value",
+    [
+        "/Users/me/keys/service-account.json",
+        "~/.config/gcloud/application_default_credentials.json",
+        "./secrets/key.pem",
+        "C:\\keys\\sa.json",
+        "${HOME}/keys/sa.json",
+    ],
+)
+def test_paths_to_key_files_are_not_secrets(value):
+    assert messages("MCP001", server(env={"GOOGLE_APPLICATION_CREDENTIALS": value})) == []
+
+
+def test_private_key_contents_are_still_secrets():
+    header = "-----BEGIN " + "PRIVATE KEY-----"  # split so the repo holds no key-shaped text
+    pem = header + "\nMIIE...\n-----END PRIVATE KEY-----"
+    assert messages("MCP001", server(env={"SERVICE_KEY": pem}))
+
+
 def test_literal_bearer_header_is_reported():
     srv = server(headers={"Authorization": "Bearer abcdefghijklmnop"})
     assert messages("MCP001", srv)

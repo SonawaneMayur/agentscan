@@ -23,4 +23,4 @@ jobs:
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run pytest
-      - run: uv run pytest research/mcp-config-census
+      - run: uv run --group demo pytest research/mcp-config-census

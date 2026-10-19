@@ -197,7 +197,7 @@ hook that blocks commits containing credentials, `.env` files, databases or rese
 
 | Task | Command |
 |---|---|
-| Tests | `uv run pytest` and `uv run pytest research/mcp-config-census` |
+| Tests | `uv run pytest` and `uv run --group demo pytest research/mcp-config-census` |
 | Lint and format | `uv run ruff check` and `uv run ruff format` |
 | Secret check (whole repo) | `uv run python scripts/check_secrets.py` |
 | Refresh the README screenshot | `uv run python scripts/render_demo.py` |

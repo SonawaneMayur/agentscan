@@ -65,3 +65,7 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# Notebook cells hold chart captions and printed summaries that read better unwrapped.
+"*.ipynb" = ["E501"]

@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-19
+
+### Fixed
+
+- MCP001 no longer reports file paths as hardcoded secrets, for example
+  `GOOGLE_APPLICATION_CREDENTIALS=/keys/service-account.json`. The path points at a key file
+  but isn't a secret itself; the contents of a key file (a PEM private key) are still
+  reported. Found while validating the MCP config census.
+
 ## [0.1.1] - 2026-10-18
 
 ### Fixed
@@ -35,6 +44,7 @@ First release, published on PyPI as `agentscan-si`.
 - `agentscan rules` lists the available rules.
 - Demo notebook and before/after example configs.
 
-[Unreleased]: https://github.com/SonawaneMayur/agentscan/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/SonawaneMayur/agentscan/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/SonawaneMayur/agentscan/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/SonawaneMayur/agentscan/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/SonawaneMayur/agentscan/releases/tag/v0.1.0

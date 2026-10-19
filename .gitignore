@@ -44,3 +44,6 @@ id_ed25519*
 /.claude/settings.local.json
 /.mcp.json
 .DS_Store
+
+# Local launch assets (social images, drafts). Not part of the project.
+/launch/
