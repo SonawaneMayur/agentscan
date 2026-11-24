@@ -1,4 +1,4 @@
-"""Step 3: aggregate the working database into pseudonymized tables in results/ (safe to commit).
+"""Step 3: aggregate the working database into aggregate-only tables in results/ (safe to commit).
 
 Headline numbers cover real configs only: files named exactly like a client's config, outside
 test/example/template folders (plugin configs included). Everything else is reported separately
@@ -16,14 +16,14 @@ import re
 import sys
 
 import pandas as pd
-from common import DATA, RESULTS, connect, private_file, pseudonym
+from common import DATA, RESULTS, connect, private_file
 from features import path_kind
 
 from agentscan import __version__
 from agentscan.rules import all_rules
 from agentscan.rules.mcp import SECRET_PATTERNS
 
-MIN_REPOS = 5  # only name packages and variable names seen in at least this many repos
+MIN_REPOS = 100  # only name widely used packages (avoids personal npm scopes and niche tools)
 PRIMARY_KINDS = ("config", "plugin")
 RULES = {r.id: r for r in all_rules()}
 
@@ -57,6 +57,7 @@ def rule_columns(files: pd.DataFrame, rule_ids: list[str]) -> dict:
         "files": n,
         "repos": int(files.repo_full_name.nunique()),
         "pct_any_finding": pct(files.any_finding.sum(), n),
+        "pct_likely_real_secret": pct(files.likely_real_secret.sum(), n),
         **{f"pct_{r}": pct((files[r] > 0).sum(), n) for r in rule_ids},
     }
 
@@ -162,6 +163,20 @@ def main() -> None:
     )
     by_rule.to_csv(RESULTS / "by_rule.csv", index=False)
 
+    headline = [
+        ("Any finding", files.any_finding, "any"),
+        ("Unpinned MCP package (MCP002)", files.MCP002 > 0, "medium"),
+        ("Likely-real hardcoded secret (MCP001)", files.likely_real_secret, "high"),
+        ("Plain-http remote server (MCP003)", files.MCP003 > 0, "high"),
+    ]
+    pd.DataFrame(
+        [
+            (name, repos_where(mask), pct(repos_where(mask), n_repos), sev)
+            for name, mask, sev in headline
+        ],
+        columns=["measure", "repos", "pct_repos", "severity"],
+    ).to_csv(RESULTS / "headline.csv", index=False)
+
     by_client = pd.DataFrame(
         [{"client": c, **rule_columns(g, rule_ids)} for c, g in files.groupby("client")]
     ).sort_values("files", ascending=False)
@@ -174,13 +189,8 @@ def main() -> None:
         )
         secret_quality["total"] = secret_quality.sum(axis=1)
         secret_quality.sort_values("total", ascending=False).to_csv(RESULTS / "secret_quality.csv")
-        real = quality[quality.quality == "likely_real"].merge(
-            files[["blob_sha", "repo_full_name"]], on="blob_sha"
-        )
-        names = real.groupby(["location", "var_name"]).repo_full_name.nunique().rename("repos")
-        names[names >= MIN_REPOS].sort_values(ascending=False).to_csv(
-            RESULTS / "leaked_variable_names.csv"
-        )
+        # Which variable names hold leaked keys is deliberately not exported: published, it
+        # would be a ready-made GitHub search recipe for finding live credentials.
 
     # --- servers and packages --------------------------------------------------------------
     packaged = servers[servers.package.notna()]
@@ -228,12 +238,6 @@ def main() -> None:
     per_file = files.n_servers.clip(upper=10).astype(int).value_counts().sort_index()
     per_file.index = ["10+" if n == 10 else str(n) for n in per_file.index]
     per_file.rename_axis("n_servers").rename("files").to_csv(RESULTS / "servers_per_file.csv")
-
-    anonymized = analyzed.assign(repo=analyzed.repo_full_name.map(pseudonym))[
-        ["repo", "client", "path_kind", "owner_type", "is_fork", "n_servers", *rule_ids,
-         "likely_real_secret", "any_finding"]
-    ]  # fmt: skip
-    anonymized.to_csv(RESULTS / "files_anonymized.csv", index=False)
 
     # Private, gitignored: likely-real secrets, for notifying owners. Never published.
     disclosure = (
