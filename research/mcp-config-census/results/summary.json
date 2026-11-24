@@ -1,0 +1,30 @@
+{
+  "agentscan_version": "0.1.2",
+  "scope": "files named exactly like a client config, outside test/example folders",
+  "collected_files": 96425,
+  "collected_unique_contents": 76617,
+  "fetch_status": {
+    "fetch_error": 25,
+    "ok": 76156,
+    "parse_error": 436
+  },
+  "files_with_servers": 94602,
+  "excluded_files_by_kind": {
+    "other_name": 6332,
+    "test_or_example": 3457
+  },
+  "analyzed_files": 84813,
+  "analyzed_repos": 72243,
+  "analyzed_unique_contents": 68064,
+  "servers_in_unique_contents": 119187,
+  "pct_files_with_any_finding": 35.4,
+  "pct_repos_with_any_finding": 36.9,
+  "repos_with_any_secret_finding": 2923,
+  "secrets_classified": true,
+  "repos_with_likely_real_secret": 2356,
+  "pct_repos_with_likely_real_secret": 3.3,
+  "collection_window_utc": [
+    "2026-10-18T06:44:43+00:00",
+    "2026-10-18T10:16:53+00:00"
+  ]
+}

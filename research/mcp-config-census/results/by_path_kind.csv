@@ -1,0 +1,5 @@
+path_kind,files,repos,pct_any_finding,pct_likely_real_secret,pct_MCP001,pct_MCP002,pct_MCP003
+config,76516,67367,37.6,3.2,4.0,35.6,0.4
+plugin,8297,5606,15.0,0.3,0.6,14.4,0.1
+other_name,6332,4813,38.9,3.9,9.9,33.0,0.8
+test_or_example,3457,2187,33.2,2.2,7.3,28.4,1.4

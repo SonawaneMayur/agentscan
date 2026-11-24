@@ -1,0 +1,8 @@
+ecosystem,launcher,servers,pinned,pct_pinned
+npm,bunx,1029,71,6.9
+npm,npx,36788,2495,6.8
+npm,pnpm,279,35,12.5
+npm,yarn,15,1,6.7
+pypi,pipx,25,4,16.0
+pypi,uv,104,3,2.9
+pypi,uvx,4539,520,11.5

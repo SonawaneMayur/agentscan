@@ -1,0 +1,4 @@
+rule_id,title,severity,files_affected,pct_files,repos_affected,pct_repos
+MCP001,Hardcoded secret in MCP config,high,3103,3.7,2923,4.0
+MCP002,MCP server package is not pinned,medium,28414,33.5,25227,34.9
+MCP003,Remote MCP server over unencrypted connection,high,302,0.4,286,0.4
