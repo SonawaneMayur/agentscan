@@ -47,3 +47,11 @@ id_ed25519*
 
 # Local launch assets (social images, drafts). Not part of the project.
 /launch/
+
+# AI-assistant handoff tools (CarryContext etc.): local session notes with machine paths.
+/.carrycontext/
+/.codex/
+/.gemini/
+/.claude/
+/AGENTS.md
+/GEMINI.md

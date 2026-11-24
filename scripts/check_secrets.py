@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 from agentscan.rules.mcp import SECRET_PATTERNS
 
@@ -30,7 +31,12 @@ BLOCKED_PATH = re.compile(
     r"|\.(db|sqlite3?|db-journal|pem|key|p12|pfx)$"
     r"|(^|/)\.env($|\.(?!example$))"
     r"|(^|/)(\.pypirc|\.netrc|id_rsa[^/]*|id_ed25519[^/]*)$"
+    r"|^(\.carrycontext|\.codex|\.gemini)/|^\.claude/handoff\.md$"  # AI session handoff notes
 )
+
+# Your home folder path (e.g. /Users/<you>) reveals your account name; tools that write session
+# notes or absolute paths tend to leak it. Checked dynamically so the name is never hardcoded.
+HOME = str(Path.home())
 
 # Deliberately fake values used in example configs and tests.
 ALLOWED_FAKES = (
@@ -57,6 +63,9 @@ def problems(path: str, text: str) -> list[str]:
             if not any(fake in line for fake in ALLOWED_FAKES):
                 line_no = text.count("\n", 0, match.start()) + 1
                 found.append(f"{path}:{line_no}: possible {kind}")
+    if len(HOME) > 6 and HOME in text:  # skip "/root" and similar CI homes
+        line_no = text.count("\n", 0, text.index(HOME)) + 1
+        found.append(f"{path}:{line_no}: contains your home folder path (reveals your username)")
     return found
 
 
