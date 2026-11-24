@@ -27,8 +27,9 @@ includes some test and placeholder values; MCP001 numbers are an upper bound.
 ## Ethics
 
 - **No raw file contents are stored.** Files are scanned in memory; secrets never reach disk.
-- **Published tables are aggregated or pseudonymized** (salted hash of the repo name). Package
-  names are only listed when used by at least 5 repositories.
+- **Published tables are aggregates only**: no per-repo or per-file rows. Package names are only
+  listed when used by at least 100 repositories, and which variable names hold leaked keys is not
+  published, since it would work as a search recipe for attackers.
 - **No repository is named** in the results or the write-up.
 - **Found credentials are never tested or used.**
 - **Disclosure:** GitHub secret scanning already alerts providers about well-known token formats

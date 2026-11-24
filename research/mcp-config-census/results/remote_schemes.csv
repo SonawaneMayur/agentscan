@@ -1,0 +1,11 @@
+url_scheme,local,servers
+file,remote host,2
+htps,remote host,1
+http,local,5391
+http,remote host,371
+https,local,29
+https,remote host,27268
+localhost,remote host,2
+npx,remote host,26
+replace,remote host,1
+ws,local,2

@@ -1,0 +1,5 @@
+measure,repos,pct_repos,severity
+Any finding,26673,36.9,any
+Unpinned MCP package (MCP002),25227,34.9,medium
+Likely-real hardcoded secret (MCP001),2356,3.3,high
+Plain-http remote server (MCP003),286,0.4,high
