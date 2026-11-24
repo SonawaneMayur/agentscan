@@ -180,10 +180,18 @@ The notebook only scans the files in `examples/`, never your own configs.
 
 ## Research
 
-[research/mcp-config-census/](research/mcp-config-census/) runs agentscan over MCP configs
-committed to public GitHub repositories, to measure how common these risks are in practice. The
-method, ethics rules and safety measures are in its README; results are published once the
-full run has been reviewed.
+**[MCP config census](research/mcp-config-census/report.md):** agentscan run over 84,813 MCP
+config files in 72,243 public GitHub repositories (October 2026).
+
+- 36.9% of repos have at least one finding
+- 2,356 repos (3.3%) contain a likely-real hardcoded credential
+- Only 6.8% of npm-based MCP servers are pinned to a version
+
+Read the [full report](research/mcp-config-census/report.md), explore the
+[analysis notebook](research/mcp-config-census/analyze.ipynb) and
+[aggregate tables](research/mcp-config-census/results/), or see the
+[method, ethics and safety measures](research/mcp-config-census/README.md). No repository,
+person or secret is identified in any published file.
 
 ## Development
 
