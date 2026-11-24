@@ -210,9 +210,9 @@ hook that blocks commits containing credentials, `.env` files, databases or rese
 | Secret check (whole repo) | `uv run python scripts/check_secrets.py` |
 | Refresh the README screenshot | `uv run python scripts/render_demo.py` |
 
-Releasing: bump `__version__` in `src/agentscan/__init__.py`, add a `CHANGELOG.md` entry, then
-push a matching tag (`git tag v0.1.1 && git push origin v0.1.1`). The release workflow tests,
-builds and publishes to PyPI.
+Changes flow `feature/…` or `bug/…` → `dev` → `test` (TestPyPI release candidate) → `main`
+(PyPI release). See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/branching.md](docs/branching.md),
+[docs/testing.md](docs/testing.md) and [docs/release-process.md](docs/release-process.md).
 
 Adding a rule: write a generator in `src/agentscan/rules/` that takes an `MCPServer`, yields one
 message per problem, and register it with the `@rule(...)` decorator. Add tests in `tests/`.

@@ -1,0 +1,24 @@
+name: Branch rules
+
+# Enforces docs/branching.md on every pull request: work branches are named
+# <type>/<issue>_<short-description> and target dev; only dev merges into test and only test
+# merges into main (hotfix/ branches are the documented exception).
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check branch name and promotion path
+        env:
+          # Passed as environment variables, never interpolated into the script, so a branch
+          # name can't inject shell commands.
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: python3 scripts/check_branch_name.py "$HEAD_REF" "$BASE_REF"
