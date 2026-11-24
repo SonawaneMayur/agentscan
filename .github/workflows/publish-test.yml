@@ -1,0 +1,93 @@
+name: Publish to TestPyPI
+
+# The test environment: every push to the test branch builds a release candidate
+# (<version>rc<run number>), publishes it to TestPyPI and installs it from there to prove the
+# real package works before anything reaches PyPI. See docs/release-process.md.
+on:
+  push:
+    branches: [test]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - run: uv sync
+      - run: uv run pytest
+      - name: Set release-candidate version (not committed)
+        id: version
+        run: |
+          base=$(uv run python -c "import agentscan; print(agentscan.__version__)")
+          version="${base}rc${GITHUB_RUN_NUMBER}"
+          sed -i "s/^__version__ = \".*\"$/__version__ = \"${version}\"/" src/agentscan/__init__.py
+          grep -q "__version__ = \"${version}\"" src/agentscan/__init__.py
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - run: uv build
+      - name: Refuse to publish research data, notebooks or local files
+        run: |
+          if tar tzf dist/*.tar.gz | grep -E '/(research|notebooks|data|scripts|\.githooks)/|\.(db|env|csv)$'; then
+            echo "Unexpected files in the source distribution" >&2
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/agentscan-si/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  smoke-test:
+    needs: [build, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - name: Install the release candidate from TestPyPI and run it
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          # Dependencies come only from the real PyPI. Only agentscan-si itself is taken from
+          # TestPyPI, with --no-deps: anyone can upload to TestPyPI, so resolving dependencies
+          # there would invite a dependency-confusion attack.
+          uv venv rc
+          uv pip install --python rc --default-index https://pypi.org/simple/ "rich>=13.7"
+          # TestPyPI can take a minute to serve a new upload.
+          for attempt in 1 2 3 4 5 6; do
+            if uv pip install --python rc --no-deps --default-index https://test.pypi.org/simple/ \
+                 "agentscan-si==${VERSION}"; then
+              break
+            fi
+            sleep 30
+          done
+          rc/bin/agentscan --version | grep -F "${VERSION}"
+          rc/bin/agentscan rules
+          if rc/bin/agentscan scan examples/vulnerable; then
+            echo "expected findings (exit 1) on examples/vulnerable" >&2
+            exit 1
+          fi
+          rc/bin/agentscan scan examples/fixed
